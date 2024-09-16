@@ -1,4 +1,5 @@
 mod config;
+mod entities;
 mod migrator;
 
 use config::db_connect;

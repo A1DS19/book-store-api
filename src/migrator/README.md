@@ -39,3 +39,7 @@
     ```sh
     cargo run -- status
     ```
+- Generate entities with:
+    ```
+    sea generate entity -o src/entities -u mysql://root:root@localhost:3306/bookstore
+    ```
