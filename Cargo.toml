@@ -13,3 +13,11 @@ incremental = false      # Disable incremental compilation
 
 [dependencies]
 rocket = {version = "0.5.1", features = ["json"]}
+sea-orm-migration = "1.0.1"
+sea-orm = { version = "1.0.1", features = [
+    "sqlx-mysql",
+    "runtime-async-std-native-tls",
+    "macros",
+    "with-chrono",
+    "debug-print"
+]}

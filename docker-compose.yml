@@ -5,3 +5,20 @@ services:
       - "9999:9999"
     volumes:
       - .:/app
+    environment:
+      - DB_TYPE=mysql
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_NAME=bookstore
+      - DB_USER=root
+      - DB_PASSWORD=root
+  
+  mysql:
+    image: mysql:9.0.1
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: bookstore
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./mysql:/var/lib/mysql
