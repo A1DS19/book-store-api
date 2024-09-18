@@ -1,9 +1,9 @@
 use crate::{
     dto::{authors::req_create_author, books::req_create_book::ReqCreateBook},
-    entities::book,
+    entities::{author, book},
 };
 use rocket::{futures::TryFutureExt, http::Status, serde::json::Json, Data, State};
-use sea_orm::{DatabaseConnection, EntityTrait, Set};
+use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};
 
 use crate::{dto::books::res_book_list::ResBookList, guards::AuthenticatedUser};
 
@@ -82,9 +82,31 @@ pub async fn show(
     }
 }
 
-#[put("/<id>")]
-pub async fn update(id: i32) -> Response<String> {
-    todo!()
+#[put("/<id>", data = "<req_book_body>")]
+pub async fn update(
+    db: &State<DatabaseConnection>,
+    id: i32,
+    req_book_body: Json<ReqCreateBook>,
+) -> Response<Json<i32>, &'static str> {
+    let db = db.inner();
+
+    let book = book::Entity::find_by_id(id)
+        .one(db)
+        .map_err(|_| ErrorResponse::new(Status::BadRequest, "error"))
+        .await?;
+
+    let mut book: book::ActiveModel = book.unwrap().into();
+
+    book.title = Set(req_book_body.title.clone());
+    book.cover = Set(req_book_body.cover.clone());
+    book.year = Set(req_book_body.year.clone());
+
+    let book = book
+        .update(db)
+        .map_err(|_| ErrorResponse::new(Status::InternalServerError, "error"))
+        .await?;
+
+    Ok(SuccessResponse::new(Status::Ok, Json(book.id)))
 }
 
 #[delete("/<id>")]

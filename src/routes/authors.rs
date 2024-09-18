@@ -1,5 +1,5 @@
-use rocket::{http::Status, serde::json::Json, State};
-use sea_orm::{DatabaseConnection, EntityTrait, Set};
+use rocket::{futures::TryFutureExt, http::Status, serde::json::Json, State};
+use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};
 
 use crate::{
     dto::authors::{req_create_author::ReqCreateAuthor, res_author_list::ResAuthorList},
@@ -83,9 +83,31 @@ pub async fn show(
     }
 }
 
-#[put("/<id>")]
-pub async fn update(id: i32) -> Response<String> {
-    todo!()
+#[put("/<id>", data = "<req_author_body>")]
+pub async fn update(
+    db: &State<DatabaseConnection>,
+    id: i32,
+    req_author_body: Json<ReqCreateAuthor>,
+) -> Response<Json<i32>, &'static str> {
+    let db = db.inner();
+
+    let author = AuthorEntity::find_by_id(id)
+        .one(db)
+        .map_err(|_| ErrorResponse::new(Status::BadRequest, "error"))
+        .await?;
+
+    let mut author: AuthorActiveModel = author.unwrap().into();
+
+    author.first_name = Set(req_author_body.first_name.clone());
+    author.last_name = Set(req_author_body.last_name.clone());
+    author.biography = Set(req_author_body.biography.clone());
+
+    let author = author
+        .update(db)
+        .map_err(|_| ErrorResponse::new(Status::BadRequest, "error"))
+        .await?;
+
+    Ok(SuccessResponse::new(Status::Ok, Json(author.id)))
 }
 
 #[delete("/<id>")]

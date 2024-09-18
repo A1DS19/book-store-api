@@ -8,7 +8,7 @@ use rocket::response::Responder;
 #[derive(Responder)]
 pub struct SuccessResponse<T>(pub (Status, T));
 
-#[derive(Responder)]
+#[derive(Responder, Debug)]
 pub struct ErrorResponse<T>(pub (Status, T));
 
 pub type Response<T, X = String> = Result<SuccessResponse<T>, ErrorResponse<X>>;
