@@ -2,7 +2,7 @@ use std::time::SystemTime;
 
 use crate::{
     config::app_config::AppConfig,
-    dto::auth::res_sign_up::ResSignUp,
+    dto::auth::{res_me::ResMe, res_sign_up::ResSignUp},
     entities::{prelude::*, user},
     guards::AuthenticatedUser,
 };
@@ -38,8 +38,31 @@ async fn find_user_by_email(
 }
 
 #[get("/me")]
-pub async fn me(user: AuthenticatedUser) -> Response<String> {
-    Ok(SuccessResponse::new(Status::Accepted, user.id.to_string()))
+pub async fn me(
+    db: &State<DatabaseConnection>,
+    user: AuthenticatedUser,
+) -> Response<Json<ResMe>, &'static str> {
+    let db = db.inner();
+
+    let authenticated_user = match User::find()
+        .filter(user::Column::Id.eq(user.id))
+        .one(db)
+        .await
+        .map_err(|_| ErrorResponse::new(Status::InternalServerError, "Internal Server Error"))?
+    {
+        Some(user) => user,
+        None => {
+            return Err(ErrorResponse::new(Status::NotFound, "User not found"));
+        }
+    };
+
+    Ok(SuccessResponse::new(
+        Status::Ok,
+        Json(ResMe {
+            id: authenticated_user.id,
+            email: authenticated_user.email.clone(),
+        }),
+    ))
 }
 
 #[post("/sign-in", data = "<req_sign_in>")]
@@ -47,7 +70,7 @@ pub async fn sign_in(
     db: &State<DatabaseConnection>,
     config: &State<AppConfig>,
     req_sign_in: Json<ReqSignIn>,
-) -> Response<ResSignIn, &'static str> {
+) -> Response<Json<ResSignIn>, &'static str> {
     let db = db as &DatabaseConnection;
 
     match find_user_by_email(&req_sign_in.email, db).await {
@@ -79,7 +102,7 @@ pub async fn sign_in(
             )
             .unwrap();
 
-            return Ok(SuccessResponse::new(Status::Ok, ResSignIn { token }));
+            return Ok(SuccessResponse::new(Status::Ok, Json(ResSignIn { token })));
         }
         Ok(None) => {
             return Err(ErrorResponse::new(Status::Unauthorized, "User not found"));
