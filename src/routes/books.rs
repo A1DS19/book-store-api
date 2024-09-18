@@ -1,6 +1,9 @@
-use crate::entities::book;
-use rocket::{http::Status, serde::json::Json, State};
-use sea_orm::{DatabaseConnection, EntityTrait};
+use crate::{
+    dto::{authors::req_create_author, books::req_create_book::ReqCreateBook},
+    entities::book,
+};
+use rocket::{futures::TryFutureExt, http::Status, serde::json::Json, Data, State};
+use sea_orm::{DatabaseConnection, EntityTrait, Set};
 
 use crate::{dto::books::res_book_list::ResBookList, guards::AuthenticatedUser};
 
@@ -32,14 +35,51 @@ pub async fn index(
     ))
 }
 
-#[post("/")]
-pub async fn create() -> Response<String> {
-    todo!()
+#[post("/", data = "<req_book_body>")]
+pub async fn create(
+    db: &State<DatabaseConnection>,
+    req_book_body: Json<ReqCreateBook>,
+    user: AuthenticatedUser,
+) -> Response<Json<i32>, &'static str> {
+    let db = db.inner();
+
+    let new_book = book::ActiveModel {
+        title: Set(req_book_body.title.clone()),
+        cover: Set(req_book_body.cover.clone()),
+        year: Set(req_book_body.year.clone()),
+        author_id: Set(req_book_body.author_id.clone()),
+        user_id: Set(user.id),
+        ..Default::default()
+    };
+
+    match book::Entity::insert(new_book).exec(db).await {
+        Ok(created_book) => Ok(SuccessResponse::new(
+            Status::Created,
+            Json(created_book.last_insert_id),
+        )),
+        Err(_) => Err(ErrorResponse::new(
+            Status::InternalServerError,
+            "Failed to create book",
+        )),
+    }
 }
 
 #[get("/<id>")]
-pub async fn show(id: i32) -> Response<String> {
-    todo!()
+pub async fn show(
+    db: &State<DatabaseConnection>,
+    id: i32,
+) -> Response<Json<book::Model>, &'static str> {
+    let db = db.inner();
+
+    let book = book::Entity::find_by_id(id)
+        .one(db)
+        .map_err(|_| ErrorResponse::new(Status::InternalServerError, "Failed to fetch book"))
+        .await?;
+
+    match book {
+        Some(book) => Ok(SuccessResponse::new(Status::Ok, Json(book))),
+        None => Err(ErrorResponse::new(Status::NotFound, "Book not found")),
+    }
 }
 
 #[put("/<id>")]

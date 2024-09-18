@@ -56,6 +56,8 @@ pub enum Author {
     Table,
     Id,
     UserId,
+    FirstName,
+    LastName,
     Biography,
     CreatedAt,
     UpdatedAt,

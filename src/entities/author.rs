@@ -14,6 +14,8 @@ pub struct Model {
     pub biography: String,
     pub created_at: DateTime,
     pub updated_at: DateTime,
+    pub first_name: String,
+    pub last_name: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

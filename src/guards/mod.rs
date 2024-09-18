@@ -15,7 +15,7 @@ impl<'r> FromRequest<'r> for AuthenticatedUser {
     type Error = &'static str;
 
     async fn from_request(req: &'r Request<'_>) -> Outcome<Self, Self::Error> {
-        if let Some(token) = req.headers().get_one("Token") {
+        if let Some(token) = req.headers().get_one("authorization") {
             let config = match req.rocket().state::<AppConfig>() {
                 Some(config) => config,
                 None => {
@@ -24,7 +24,7 @@ impl<'r> FromRequest<'r> for AuthenticatedUser {
             };
 
             let claims = match decode::<Claims>(
-                &token,
+                &token.split("Bearer ").collect::<Vec<&str>>()[1],
                 &DecodingKey::from_secret(config.jwt_secret.as_ref()),
                 &Validation::default(),
             ) {
