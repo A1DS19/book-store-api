@@ -2,9 +2,13 @@ use rocket::{futures::TryFutureExt, http::Status, serde::json::Json, State};
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, ModelTrait, Set};
 
 use crate::{
-    dto::authors::{req_create_author::ReqCreateAuthor, res_author_list::ResAuthorList},
-    entities::author::{
-        ActiveModel as AuthorActiveModel, Entity as AuthorEntity, Model as AuthorModel,
+    dto::authors::{
+        req_create_author::ReqCreateAuthor, res_author_books::ResAuthorBooks,
+        res_author_list::ResAuthorList,
+    },
+    entities::{
+        author::{ActiveModel as AuthorActiveModel, Entity as AuthorEntity, Model as AuthorModel},
+        book::{Entity as BookEntity, Model as BookModel},
     },
     guards::AuthenticatedUser,
 };
@@ -143,4 +147,40 @@ pub async fn delete(db: &State<DatabaseConnection>, id: i32) -> Response<Json<i3
             ))
         }
     }
+}
+
+#[get("/<id>/books")]
+pub async fn author_books(
+    db: &State<DatabaseConnection>,
+    id: i32,
+) -> Response<Json<ResAuthorBooks>, String> {
+    let db = db.inner();
+
+    let author = match AuthorEntity::find_by_id(id)
+        .one(db)
+        .map_err(|e| ErrorResponse::new(Status::InternalServerError, format!("Error: {:#?}", e)))
+        .await?
+    {
+        Some(author) => author,
+        None => {
+            return Err(ErrorResponse::new(
+                Status::NotFound,
+                "Author not found".to_owned(),
+            ));
+        }
+    };
+
+    let books: Vec<BookModel> = author
+        .find_related(BookEntity)
+        .all(db)
+        .map_err(|e| ErrorResponse::new(Status::InternalServerError, format!("Error: {:#?}", e)))
+        .await?;
+
+    Ok(SuccessResponse::new(
+        Status::Ok,
+        Json(ResAuthorBooks {
+            total: books.len(),
+            books,
+        }),
+    ))
 }

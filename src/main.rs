@@ -10,6 +10,7 @@ use config::db_connect;
 use fairings::cors::CORS;
 use migrator::Migrator;
 use rocket::http::Status;
+use routes::authors::author_books;
 use routes::{auth, authors, books};
 use routes::{Response, SuccessResponse};
 use sea_orm_migration::MigratorTrait;
@@ -63,7 +64,8 @@ async fn rocket() -> _ {
                 authors::create,
                 authors::show,
                 authors::update,
-                authors::delete
+                authors::delete,
+                authors::author_books
             ],
         )
         .mount(
