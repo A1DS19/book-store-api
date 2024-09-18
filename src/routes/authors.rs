@@ -1,5 +1,5 @@
 use rocket::{futures::TryFutureExt, http::Status, serde::json::Json, State};
-use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};
+use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, ModelTrait, Set};
 
 use crate::{
     dto::authors::{req_create_author::ReqCreateAuthor, res_author_list::ResAuthorList},
@@ -110,7 +110,37 @@ pub async fn update(
     Ok(SuccessResponse::new(Status::Ok, Json(author.id)))
 }
 
+// fails when author has books, maybe delete cascade?
 #[delete("/<id>")]
-pub async fn delete(id: i32) -> Response<String> {
-    todo!()
+pub async fn delete(db: &State<DatabaseConnection>, id: i32) -> Response<Json<i32>, String> {
+    let db = db.inner();
+
+    let author = match AuthorEntity::find_by_id(id)
+        .one(db)
+        .map_err(|_| ErrorResponse::new(Status::UnprocessableEntity, "oops".to_owned()))
+        .await?
+    {
+        Some(author) => author,
+        None => {
+            return Err(ErrorResponse::new(
+                Status::NotFound,
+                "Author not found".to_owned(),
+            ));
+        }
+    };
+
+    match author
+        .delete(db)
+        .map_err(|e| ErrorResponse::new(Status::InternalServerError, format!("error: {:?}", e)))
+        .await
+    {
+        Ok(_) => Ok(SuccessResponse::new(Status::Ok, Json(id))),
+        Err(e) => {
+            println!("Error: {:?}", e);
+            Err(ErrorResponse::new(
+                Status::InternalServerError,
+                "Failed to delete author".to_owned(),
+            ))
+        }
+    }
 }

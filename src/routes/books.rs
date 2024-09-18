@@ -3,7 +3,7 @@ use crate::{
     entities::{author, book},
 };
 use rocket::{futures::TryFutureExt, http::Status, serde::json::Json, Data, State};
-use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};
+use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, ModelTrait, Set};
 
 use crate::{dto::books::res_book_list::ResBookList, guards::AuthenticatedUser};
 
@@ -110,6 +110,24 @@ pub async fn update(
 }
 
 #[delete("/<id>")]
-pub async fn delete(id: i32) -> Response<String> {
-    todo!()
+pub async fn delete(db: &State<DatabaseConnection>, id: i32) -> Response<Json<i32>, &'static str> {
+    let db = db.inner();
+
+    let author = match book::Entity::find_by_id(id)
+        .one(db)
+        .map_err(|_| ErrorResponse::new(Status::UnprocessableEntity, "oops"))
+        .await?
+    {
+        Some(author) => author,
+        None => {
+            return Err(ErrorResponse::new(Status::NotFound, "Author not found"));
+        }
+    };
+
+    author
+        .delete(db)
+        .map_err(|_| ErrorResponse::new(Status::InternalServerError, "error"))
+        .await?;
+
+    Ok(SuccessResponse::new(Status::Ok, Json(id)))
 }
