@@ -1,10 +1,10 @@
-pub mod db_config;
+pub mod app_config;
 
-use crate::config::db_config::DbConfig;
+use crate::config::app_config::AppConfig;
 use sea_orm::*;
 
 pub(crate) async fn db_connect() -> Result<DatabaseConnection, DbErr> {
-    let config = DbConfig::new().map_err(|e| {
+    let config = AppConfig::new().map_err(|e| {
         eprintln!("Configuration Error: {}", e);
 
         DbErr::Conn(RuntimeErr::Internal(
